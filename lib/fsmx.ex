@@ -29,8 +29,27 @@ defmodule Fsmx do
         {:error, msg} ->
           schema
           |> Ecto.Changeset.change()
-          |> Ecto.Changeset.add_error(state_field, "transition_changeset failed: #{msg}")
+          |> add_error(state_field, state, new_state, msg)
       end
+    end
+
+    defp add_error(changeset, state_field, from_state, to_state, :__fsmx_invalid__) do
+      Ecto.Changeset.add_error(
+        changeset,
+        state_field,
+        "transition_changeset failed: invalid transition from #{from_state} to #{to_state}",
+        transition_error: :invalid,
+        from: from_state,
+        to: to_state
+      )
+    end
+
+    defp add_error(changeset, state_field, from_state, to_state, err) do
+      Ecto.Changeset.add_error(changeset, state_field, "transition_changeset failed: #{err}",
+        transition_error: err,
+        from: from_state,
+        to: to_state
+      )
     end
 
     @spec transition_multi(Ecto.Multi.t(), struct(), any, state_t, map) :: Ecto.Multi.t()
@@ -65,7 +84,7 @@ defmodule Fsmx do
     |> if do
       :ok
     else
-      {:error, "invalid transition from #{state} to #{new_state}"}
+      {:error, :__fsmx_invalid__}
     end
   end
 
